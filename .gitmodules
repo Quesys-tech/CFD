@@ -1,0 +1,3 @@
+[submodule "StreamFunction/QLA"]
+	path = StreamFunction/QLA
+	url = https://github.com/Quesys-tech/QLA.git

@@ -7,7 +7,7 @@
 #include <cmath>
 using namespace std;
 
-#include "QLA/include/qla.hpp"
+#include "../QLA/include/qla.hpp"
 using namespace QLA;
 
 const int n = 50;
