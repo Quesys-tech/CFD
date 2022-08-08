@@ -12,14 +12,14 @@ $$
 $$
 u(x,t) = 
 \begin{cases}
-    1 & (0 < x <\frac{1}{2})\\
-    0 & otherwise
+    1 & \left(\frac{1}{4} < x <\frac{3}{4}\right)\\
+    0 & \mathrm{otherwise}
 \end{cases}
 $$
 
 ここで境界条件は
-$u(0,t)=u(1,t)=0$
-とする.
+$u(0,t)=u(1,t)$
+の周期境界条件とする.
 
 解析解は
 
@@ -34,8 +34,8 @@ $$
 $$
 f(x) = 
 \begin{cases}
-    1 & (0 < x <\frac{1}{2})\\
-    0 & otherwise
+    1 & \left(\frac{1}{4} < x <\frac{3}{4}\right)\\
+    0 & \mathrm{otherwise}
 \end{cases}
 $$
 
