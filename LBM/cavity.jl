@@ -87,10 +87,20 @@ end
 
 function stream!(lbm::D2Q9LBM{T}) where {T}
     N_x, N_y = size(lbm.rho)
-    for jy in 1:N_y, jx in 1:N_x, k in 1:9
-        c_k = lbm.lattice.c[:, k]
-        lbm.f[k, jx, jy] = lbm.f_post[k, Int(mod1(jx - c_k[1], N_x)), Int(mod1(jy - c_k[2], N_y))]
-
+    k_opp = [1, 4, 5, 2, 3, 8, 9, 6, 7]
+    for jy in 1:N_y, jx in 1:N_x, i in 1:9
+        c_i = lbm.lattice.c[:, i]
+        jx_pre = jx - Int(c_i[1])
+        jy_pre = jy - Int(c_i[2])
+        if jx_pre < 1 || jx_pre > N_x || jy_pre < 1 # Bounce back boundary condition
+            lbm.f[k_opp[i], jx, jy] = lbm.f_post[i, jx, jy]
+        elseif jy_pre > N_y
+            U_in = SA{T}[0.05, 0.0]
+            rho_in = 1.0
+            lbm.f[k_opp[i], jx, jy] = lbm.f_post[i, jx, jy] - 6 * lbm.lattice.w[i] * rho_in * (c_i ⋅ U_in)
+        else
+            lbm.f[i, jx, jy] = lbm.f_post[i, jx_pre, jy_pre]
+        end
     end
 end
 
@@ -110,9 +120,9 @@ function main()
     result_dir = joinpath(@__DIR__, "results/2dtaylor_green")
     mkpath(result_dir)
     paraview_collection(joinpath(result_dir, "Nx$(Nx)_Ny$(Ny).pvd")) do pvd
-        for t in 0:1000
+        for t in 0:10000
             macroscopic!(lbm)
-            if t % 10 == 0
+            if t % 100 == 0
                 vtk_dst = joinpath(result_dir, "step_$t.vtr")
                 @show vtk_dst
                 vtk_grid(vtk_dst, collect(0.5:1:(Nx-0.5)), collect(0.5:1:(Ny-0.5)), [0.0]) do vtk
