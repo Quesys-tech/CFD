@@ -92,12 +92,13 @@ function stream!(lbm::D2Q9LBM{T}) where {T}
         c_i = lbm.lattice.c[:, i]
         jx_pre = jx - Int(c_i[1])
         jy_pre = jy - Int(c_i[2])
-        if jx_pre < 1 || jx_pre > N_x || jy_pre < 1 # Bounce back boundary condition
-            lbm.f[k_opp[i], jx, jy] = lbm.f_post[i, jx, jy]
+
+        if jx_pre < 1 || jx_pre > N_x || jy_pre < 1
+            lbm.f[i, jx, jy] = lbm.f_post[k_opp[i], jx, jy]
         elseif jy_pre > N_y
             U_in = SA{T}[0.05, 0.0]
-            rho_in = 1.0
-            lbm.f[k_opp[i], jx, jy] = lbm.f_post[i, jx, jy] - 6 * lbm.lattice.w[i] * rho_in * (c_i ⋅ U_in)
+            rho_in = one(T)  # or lbm.rho[jx, jy], depending on your model
+            lbm.f[i, jx, jy] = lbm.f_post[k_opp[i], jx, jy] + 6 * lbm.lattice.w[i] * rho_in * (c_i ⋅ U_in)
         else
             lbm.f[i, jx, jy] = lbm.f_post[i, jx_pre, jy_pre]
         end
