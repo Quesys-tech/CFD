@@ -8,5 +8,6 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
 [compat]
 CSV = "1.1.0"
+ForwardDiff = "1.4.6"
 Plots = "1.41.7"
 StaticArrays = "1.9.19"
