@@ -2,7 +2,7 @@
 
 julia_version = "1.13.0"
 manifest_format = "2.1"
-project_hash = "ca185fbe715b866cf824e42718c84fb8087e22c7"
+project_hash = "275a30ccd9176be0dfa871d7040d3df5a544f0f6"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -294,10 +294,10 @@ version = "1.3.7"
 
 [[deps.ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
-git-tree-sha1 = "1b86cca764a61dcac4fef4c5e16e378e5ed6953c"
+git-tree-sha1 = "3b0f72e2ffef1a139ac450725c9ecd01c0a3c050"
 registries = "General"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "1.4.5"
+version = "1.4.6"
 weakdeps = ["StaticArrays"]
 
     [deps.ForwardDiff.extensions]
