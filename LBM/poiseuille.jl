@@ -102,6 +102,7 @@ function stream!(lbm::D2Q9LBM{T}) where {T}
         else # bulk
             lbm.f[i, jx, jy] = lbm.f_post[i, jx_pre, jy_pre]
         end
+        # Todo: Implement inlet/outlet B.C.
     end
 end
 
