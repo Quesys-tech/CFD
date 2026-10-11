@@ -7,16 +7,16 @@ $$
     \frac{\partial \bm{u}}{\partial t} + (\bm{u}\cdot\nabla)\bm{u} &= -\nabla p + \frac{1}{\mathrm{Re}} \nabla^2 \bm{u}
 \end{aligned}
 $$
-$\bm{u} = (u,v)$を速度, $t$を時間, $p$を圧力, $\mathrm{Re}$をReynolds数とする. 
+$\bm{u} = (u,v)$を速度, $t$を時間, $p$を圧力, $\mathrm{Re}$をReynolds数とする.
 連続の式の成分を書き下すと
 $$
-\frac{\partial u}{\partial x} + 
-\frac{\partial v}{\partial y} =0  
+\frac{\partial u}{\partial x} +
+\frac{\partial v}{\partial y} =0
 $$
 を得る.
 ここで
 $$
-u = \frac{\partial \Psi}{\partial y},\quad v = -\frac{\partial \Psi}{\partial x} 
+u = \frac{\partial \Psi}{\partial y},\quad v = -\frac{\partial \Psi}{\partial x}
 $$
 とする流れ関数$\Psi$を定義すると連続の式は自動的に満たされる.
 次に渦度$\omega$を

@@ -3,7 +3,7 @@ using ForwardDiff
 using CSV
 using DataFrames
 
-function exact(ρₗ, pₗ, uₗ, ρᵣ, pᵣ, uᵣ, t, x; γ=1.4)
+function exact(ρₗ, pₗ, uₗ, ρᵣ, pᵣ, uᵣ, t, x; γ = 1.4)
 
     ρ = zeros(length(x))
     p = zeros(length(x))
@@ -28,8 +28,8 @@ function exact(ρₗ, pₗ, uₗ, ρᵣ, pᵣ, uᵣ, t, x; γ=1.4)
         end
 
         P = pₗ
-        for i = 1:10
-            abs(pratioerr(P)) < 1e-15 && break
+        for i in 1:10
+            abs(pratioerr(P)) < 1.0e-15 && break
             P -= pratioerr(P) / ForwardDiff.derivative(pratioerr, P)
         end
 
@@ -47,7 +47,7 @@ function exact(ρₗ, pₗ, uₗ, ρᵣ, pᵣ, uᵣ, t, x; γ=1.4)
                 ρ[i] = ρᵣ
                 p[i] = pᵣ
                 u[i] = uᵣ
-            elseif x[i] > V_c * t # shock 
+            elseif x[i] > V_c * t # shock
                 ρ[i] = ρ₂
                 p[i] = p₂
                 u[i] = u₂
@@ -80,19 +80,19 @@ function main()
     df = CSV.read("sod.csv", DataFrame)
 
     # plot density
-    plot(x, ρ_exact, label="exact", xlabel="x", ylabel="ρ", legend=:topleft)
-    plot!(df.x, df.density, label="numerical")
+    plot(x, ρ_exact, label = "exact", xlabel = "x", ylabel = "ρ", legend = :topleft)
+    plot!(df.x, df.density, label = "numerical")
     savefig("density.png")
 
     # plot velocity
-    plot(x, u_exact, label="exact", xlabel="x", ylabel="u", legend=:topleft)
-    plot!(df.x, df.velocity, label="numerical")
+    plot(x, u_exact, label = "exact", xlabel = "x", ylabel = "u", legend = :topleft)
+    plot!(df.x, df.velocity, label = "numerical")
     savefig("velocity.png")
 
     # plot pressure
-    plot(x, p_exact, label="exact", xlabel="x", ylabel="p", legend=:topleft)
-    plot!(df.x, df.pressure, label="numerical")
-    savefig("pressure.png")
+    plot(x, p_exact, label = "exact", xlabel = "x", ylabel = "p", legend = :topleft)
+    plot!(df.x, df.pressure, label = "numerical")
+    return savefig("pressure.png")
 
 end
 main()

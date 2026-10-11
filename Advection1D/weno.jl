@@ -9,7 +9,7 @@ function u_exact(x, t, c)
             y -= 1
         end
     end
-    if 1/3 <= y <= 2/3
+    if 1 / 3 <= y <= 2 / 3
         return 1
     else
         return 0
@@ -17,13 +17,13 @@ function u_exact(x, t, c)
 end
 
 function init(Δx::T) where {T}
-    x = 0:Δx:1-Δx
+    x = 0:Δx:(1 - Δx)
     u = zeros(T, length(x))
     u .= u_exact.(x, 0, 0)
-    x, u
+    return x, u
 end
 
-function weno_pbc!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ=1e-10) where T
+function weno_pbc!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ = 1.0e-10) where {T}
     N = length(u)
     @assert length(u⁺) == N
     @assert c > 0
@@ -33,7 +33,7 @@ function weno_pbc!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ=1e-10
     function D⁻(i)
         uᵢ = u[mod1(i, N)]
         uᵢ₋₁ = u[mod1(i - 1, N)]
-        (uᵢ - uᵢ₋₁) / Δx
+        return (uᵢ - uᵢ₋₁) / Δx
     end
 
     for i in eachindex(u)
@@ -58,6 +58,7 @@ function weno_pbc!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ=1e-10
         w₃ = α₃ / sum_α
         u⁺[i] = u[i] - Δt * c * (w₁ * b₁ + w₂ * b₂ + w₃ * b₃)
     end
+    return
 end
 
 function main()
@@ -71,10 +72,10 @@ function main()
     x, u = init(Δx)
     u⁺ = similar(u)
 
-    @gif for n = 0:200
-        plot(x, u, label="WENO")
+    return @gif for n in 0:200
+        plot(x, u, label = "WENO")
         t = n * Δt
-        plot!(x, u_exact.(x, t, c), label="Exact",title="\$t=$(round(t,digits=4))\$")
+        plot!(x, u_exact.(x, t, c), label = "Exact", title = "\$t=$(round(t, digits = 4))\$")
         weno_pbc!(u⁺, u, c, Δx, Δt)
         u .= u⁺
     end

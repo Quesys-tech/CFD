@@ -3,14 +3,14 @@
 ## 問題設定
 
 $$
-\frac{\partial u }{\partial t} + c\frac{\partial u}{\partial x} = 0 
+\frac{\partial u }{\partial t} + c\frac{\partial u}{\partial x} = 0
 $$
 
 ここで, $c>0$とする.
 初期条件は
 
 $$
-u(x,t) = 
+u(x,t) =
 \begin{cases}
     1 & \left(\frac{1}{4} < x <\frac{3}{4}\right)\\
     0 & \mathrm{otherwise}
@@ -29,10 +29,10 @@ $$
 \end{aligned}
 $$
 
-ここで, 
+ここで,
 
 $$
-f(x) = 
+f(x) =
 \begin{cases}
     1 & \left(\frac{1}{4} < x <\frac{3}{4}\right)\\
     0 & \mathrm{otherwise}
