@@ -1,21 +1,7 @@
 using StaticArrays
 using WriteVTK
 using LinearAlgebra
-abstract type AbstractLattice{D, Q, T} end
-abstract type AbstractCollision{D, Q, T} end
-
-struct D2Q9Lattice{T} <: AbstractLattice{2, 9, T}
-    w::SVector{9, T}
-    c::SMatrix{2, 9, T, 18}
-    function D2Q9Lattice(::Type{T}) where {T}
-        w = @SVector [4 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 36, 1 / 36, 1 / 36, 1 / 36]
-        c = @SMatrix [
-            0 1 0 -1 0 1 -1 -1 1;
-            0 0 1 0 -1 1 1 -1 -1
-        ]
-        return new{T}(w, c)
-    end
-end
+include("d2q9.jl")
 
 """
     f_eq(w_k, c_k, u, rho)
@@ -29,7 +15,7 @@ Compute the equilibrium distribution function.
 - `rho`: Macroscopic density.
 """
 function f_eq(w_k, c_k, u, rho)
-    return w_k * rho * (1 + 3c_k ⋅ u + 9 / 2 * (c_k ⋅ u)^2 - 3 / 2 * (u ⋅ u))
+    rho * gamma_i(w_k, c_k, u)
 end
 
 struct D2Q9BGKCollision{T} <: AbstractCollision{2, 9, T}
@@ -93,7 +79,7 @@ end
 
 function stream!(lbm::D2Q9LBM{T}) where {T}
     N_x, N_y = size(lbm.rho)
-    k_opp = [1, 4, 5, 2, 3, 8, 9, 6, 7]
+    k_opp = D2Q9_OPPOSITE
     for jy in 1:N_y, jx in 1:N_x, i in 1:9
         c_i = lbm.lattice.c[:, i]
         jx_pre = jx - Int(c_i[1])
@@ -147,4 +133,6 @@ function main()
     end
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
