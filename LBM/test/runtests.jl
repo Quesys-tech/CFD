@@ -212,7 +212,7 @@ end
             ((1 - phi) * p.rho_L * 0.12 + phi * p.rho_H * 0.04) / rho
         @test relaxation_time(p, phi, rho) ≈ expected
     end
-    b = rti_parameters()
+    b = rti_parameters(Nx = 256)
     p = b.parameters
     @test (b.Nx, b.Ny) == (256, 1024)
     @test p.xi == 5
@@ -247,7 +247,7 @@ end
     # Moment tests alone cannot detect a solver with no macroscopic evolution.
     # At t*=0.0625 the benchmark has already moved ~0.25 lattice nodes in both
     # directions. Use a threshold comfortably above initialization relaxation.
-    setup = rti_parameters()
+    setup = rti_parameters(Nx = 256)
     s = initialize_rti(setup)
     initial = interface_fronts(s)
     step!(s, 1000)
@@ -258,6 +258,40 @@ end
     @test d.finite
     @test abs(d.relative_mass_drift) < 1.0e-10
     @test -1.0e-3 < d.phi_min <= d.phi_max < 1.001
+end
+
+@testset "Square RTI preserves vertical resolution and seeds four fingers" begin
+    square, baseline = rti_parameters(), rti_parameters(Nx = 256)
+    @test (square.Nx, square.Ny) == (1024, 1024)
+    @test square.Ny == baseline.Ny
+    @test square.L == baseline.L == 256
+    @test square.wavelength == 256
+    @test square.fingers == 4
+    for field in fieldnames(Parameters{Float64})
+        @test getfield(square.parameters, field) == getfield(baseline.parameters, field)
+    end
+    @test square.t0 == baseline.t0
+    @test_throws ArgumentError rti_parameters(Nx = 1000)
+    @test_throws ArgumentError rti_parameters(Nx = 128)
+
+    # A reduced grid checks all four periods through collision and periodic
+    # streaming. A wider domain must evolve like four copies of one period.
+    setup = rti_parameters(L = 16)
+    repeated = initialize_rti(setup; threaded = false)
+    single = initialize_rti(rti_parameters(L = 16, Nx = 16); threaded = false)
+    @test size(repeated.phi) == (64, 64)
+    @test repeated.phi == repeat(single.phi, 4, 1)
+    front = interface_fronts(repeated; wavelength = setup.wavelength)
+    @test front.bubble > 0
+    @test front.spike < 0 # Nx/2 would wrongly measure another bubble.
+    @test_throws ArgumentError interface_fronts(repeated; wavelength = 15)
+    step!(repeated, 20)
+    step!(single, 20)
+    @test repeated.phi == repeat(single.phi, 4, 1)
+    @test repeated.g == repeat(single.g, 1, 4, 1)
+    @test repeated.u == repeat(single.u, 1, 4, 1)
+    @test diagnostics(repeated).finite
+    @test abs(diagnostics(repeated).relative_mass_drift) < 1.0e-12
 end
 
 @testset "Serial/threaded equivalence" begin

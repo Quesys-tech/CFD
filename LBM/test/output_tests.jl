@@ -38,9 +38,22 @@ end
             threaded = false, result_dir = dir
         )
         @test s.iteration == 2
+        @test size(s.phi) == (64, 64)
         @test length(collect(eachmatch(r"<DataSet\s", read(joinpath(dir, "rti.pvd"), String)))) == 3
         rows = readlines(joinpath(dir, "diagnostics.csv"))
         @test length(rows) == 4
         @test startswith(rows[end], "2,0.000125,")
+        values = split(rows[2], ',')
+        @test parse(Float64, values[12]) > 0
+        @test parse(Float64, values[13]) < 0
+        parameters = read(joinpath(dir, "parameters.txt"), String)
+        @test occursin("Nx = 64", parameters)
+        @test occursin("Ny = 64", parameters)
+        @test occursin("fingers = 4", parameters)
+        # Coordinates and point counts must describe a square, not a stretched
+        # display of the old tall mesh. Inspect only the XML before raw data.
+        vtk = String(read(joinpath(dir, "step_0.vtr")))
+        xml = first(split(vtk, "<AppendedData"; limit = 2))
+        @test occursin("WholeExtent=\"0 63 0 63 0 0\"", xml)
     end
 end

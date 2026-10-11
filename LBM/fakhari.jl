@@ -425,24 +425,35 @@ function column_crossings(phi, x, y0)
     return count == 0 ? (NaN, NaN, 0) : (lo, hi, count)
 end
 
-"""phi=0.5 crossings: highest bubble at x=0, lowest heavy spike at x=L/2."""
-function interface_fronts(s::PhaseFieldLBM; y0 = -size(s.phi, 2) / 2 + 0.5)
+"""phi=0.5 crossings at x=0 and x=wavelength/2 (one representative finger)."""
+function interface_fronts(
+        s::PhaseFieldLBM; wavelength::Integer = size(s.phi, 1),
+        y0 = -size(s.phi, 2) / 2 + 0.5
+    )
     nx = size(s.phi, 1)
-    iseven(nx) || throw(ArgumentError("exact x=L/2 measurement needs even Nx"))
+    2 <= wavelength <= nx && iseven(wavelength) ||
+        throw(ArgumentError("wavelength must be even and fit inside the domain"))
     _, bubble, nb = column_crossings(s.phi, 1, y0)
-    spike, _, ns = column_crossings(s.phi, nx ÷ 2 + 1, y0)
+    spike, _, ns = column_crossings(s.phi, wavelength ÷ 2 + 1, y0)
     return (bubble = bubble, spike = spike, bubble_crossings = nb, spike_crossings = ns)
 end
 
-"""Fig.5 low-density-ratio RTI parameters, derived from dimensionless inputs."""
+"""
+Fig.5 physical parameters with a configurable horizontal domain width.
+L is the reference length AND perturbation wavelength; Ny=4L, dx=dy=1.
+Default Nx=4L gives a square with four identical initial fingers.
+Nx=L recovers the original single-wavelength benchmark.
+"""
 function rti_parameters(;
-        T::Type{<:AbstractFloat} = Float64, L::Integer = 256,
+        T::Type{<:AbstractFloat} = Float64, L::Integer = 256, Nx::Integer = 4L,
         At = 0.5, Re = 3000, mu_star = 1, Ca = 0.26, Pe = 1000,
         t0 = 16000, rho_L = 1, xi = 5, viscosity_model = :linear
     )
     L > 0 && iseven(L) && 0 < At < 1 &&
         all(v -> isfinite(v) && v > 0, (Re, mu_star, Ca, Pe, t0, rho_L, xi)) ||
         throw(ArgumentError("invalid RTI dimensionless parameters"))
+    Nx >= L && Nx % L == 0 ||
+        throw(ArgumentError("Nx must be a positive integer multiple of wavelength L"))
     rho_H = rho_L * (1 + At) / (1 - At)
     g = L / (At * t0^2)
     U0 = sqrt(g * L)
@@ -456,7 +467,8 @@ function rti_parameters(;
         gravity = (0, -g), viscosity_model
     )
     return (
-        parameters = p, Nx = L, Ny = 4L, L = T(L), At = T(At), Re = T(Re),
+        parameters = p, Nx = Nx, Ny = 4L, L = T(L), wavelength = L,
+        fingers = Nx ÷ L, At = T(At), Re = T(Re),
         mu_star = T(mu_star), Ca = T(Ca), Pe = T(Pe), t0 = T(t0), g = T(g),
         U0 = T(U0), mu_H = T(mu_H), mu_L = T(mu_L), nu_H = T(nu_H), nu_L = T(nu_L),
         sigma = T(sigma), mobility = T(mobility), tau_phi = T(mobility / CS2),
@@ -469,7 +481,11 @@ function initialize_rti(setup = rti_parameters(); collision = :mrt, threaded = t
     nx, ny, L = setup.Nx, setup.Ny, setup.L
     phi, pstar = zeros(T, nx, ny), zeros(T, nx, ny)
     @inbounds for x in 1:nx
-        interface = T(0.1) * L * cos(2T(pi) * (x - 1) / L)
+        # Repeat the original wavelength, rather than stretching one cosine
+        # over the wider domain. Reducing x modulo L gives identical seeds
+        # and a smooth horizontal periodic seam for an integer number of waves.
+        phase_x = mod(x - 1, setup.wavelength)
+        interface = T(0.1) * L * cos(2T(pi) * phase_x / L)
         for y in 1:ny
             yc = -2L + T(y) - T(0.5)
             # Initialization only: vertical d ≈ y-yI(x), NOT the exact

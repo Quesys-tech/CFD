@@ -34,7 +34,7 @@ function save_snapshot(s, setup, result_dir)
 end
 
 function write_diagnostics(io, s, setup)
-    d, front = diagnostics(s), interface_fronts(s)
+    d, front = diagnostics(s), interface_fronts(s; wavelength = setup.wavelength)
     println(
         io, join(
             (
@@ -54,23 +54,28 @@ function write_diagnostics(io, s, setup)
 end
 
 """
-Run the Fig.5 RTI baseline with CPU kernels, horizontal periodicity and
-vertical no-slip/no-phase-flux walls. Default output includes tstar=0,1,2,3.
+Run RTI with CPU kernels, horizontal periodicity and vertical no-slip/no-flux
+walls. Default: a 1024x1024 square with four wavelengths and Fig.5 material
+parameters. Default output includes tstar=0,1,2,3.
 """
 function run_rti(;
-        L = 256, t0 = 16000, steps = round(Int, 3t0), output_every = 1000,
+        L = 256, Nx = 4L, t0 = 16000, steps = round(Int, 3t0), output_every = 1000,
         diagnostic_every = 100, collision = :mrt, threaded = true,
-        T = Float64, result_dir = joinpath(@__DIR__, "results", "rti_fakhari")
+        T = Float64, result_dir = joinpath(@__DIR__, "results", "rti_square")
     )
     steps >= 0 && output_every > 0 && diagnostic_every > 0 ||
         throw(ArgumentError("invalid steps or output intervals"))
-    setup = rti_parameters(; T, L, t0)
+    setup = rti_parameters(; T, L, Nx, t0)
     s = initialize_rti(setup; collision, threaded)
-    initial_front = interface_fronts(s)
+    initial_front = interface_fronts(s; wavelength = setup.wavelength)
     mkpath(result_dir)
     @printf(
         "RTI: %d x %d, %d steps, final t*=%.4f (t0=%.0f steps)\n",
         setup.Nx, setup.Ny, steps, steps / setup.t0, setup.t0
+    )
+    @printf(
+        "reference L=%.0f, wavelength=%d, initial fingers=%d\n",
+        setup.L, setup.wavelength, setup.fingers
     )
     if steps / setup.t0 < 0.1
         println(
@@ -105,7 +110,7 @@ function run_rti(;
             if iteration % diagnostic_every == 0 || output
                 d = write_diagnostics(io, s, setup)
                 if output
-                    front = interface_fronts(s)
+                    front = interface_fronts(s; wavelength = setup.wavelength)
                     @printf(
                         "step=%d t*=%.4f mass drift=%+.3e phi=[%.6f,%.6f] Ma=%.4g bubble=%.3f (delta=%+.3f) spike=%.3f (delta=%+.3f)\n",
                         iteration, iteration / setup.t0, d.relative_mass_drift,
@@ -127,13 +132,14 @@ function main(args = ARGS)
         println(
             """
             julia --project=. --threads=auto LBM/rayleigh_taylor.jl [options]
-              --nx=256                L=Nx, Ny=4Nx (even integer)
+              --nx=1024               horizontal nodes (multiple of L); default: 4L
+              --length=256            reference L and wavelength; Ny=4L (even integer)
               --t0=16000              reference time in lattice steps
               --steps=48000           default: round(3*t0)
               --output-every=1000     VTK snapshots (+ t*=0,1,2,3 and final)
               --diagnostic-every=100  conservation, extrema, Mach, fronts, NaN/Inf
               --collision=mrt        mrt or bgk
-              --output-dir=PATH       default: LBM/results/rti_fakhari
+              --output-dir=PATH       default: LBM/results/rti_square
               --serial               disable threading
             """
         )
@@ -149,6 +155,8 @@ function main(args = ARGS)
         length(parts) == 2 || throw(ArgumentError("expected --option=value: $arg"))
         key, value = parts
         if key == "--nx"
+            options[:Nx] = parse(Int, value)
+        elseif key == "--length"
             options[:L] = parse(Int, value)
         elseif key == "--t0"
             options[:t0] = parse(Float64, value)

@@ -23,14 +23,27 @@ RTI の発展を見るには上の既定コマンドで48,000ステップまで�
 smoke test は専用の出力ディレクトリに保存します。
 
 ```sh
-julia --project=. --threads=4 LBM/rayleigh_taylor.jl --nx=32 --steps=100 --output-every=50 --output-dir=LBM/results/rti_smoke
+julia --project=. --threads=4 LBM/rayleigh_taylor.jl --length=32 --steps=100 --output-every=50 --output-dir=LBM/results/rti_square_smoke
 ```
 
-`--help` で設定を表示します。既定の計算は `256 × 1024`、48,000 steps
-（`tstar=3`）です。`L` を変更すると `Nx=L, Ny=4L` とし、無次元入力から
-物性値を再計算します。`t0` は別の入力で、既定値は常に16,000です。
+`--help` で設定を表示します。既定の計算は **`1024 × 1024` の正方形**、
+48,000 steps（`tstar=3`）です。縦方向は元と同じ1,024格子、格子間隔は
+`dx=dy=1`、上下壁は `y=±512`。横幅だけを1,024格子に広げています。
+基準長さ・摂動波長 `L=256` を保ち、界面に4周期を置くので4本の finger が成長します。
 
-結果は `LBM/results/rti_fakhari/` に出力します。
+`--nx` は横方向の格子数だけを変更し、`L` の整数倍を指定します。
+`--length` は基準長さ・摂動波長 `L` を変更し、`Ny=4L` と物性値を再計算します。
+横方向を省略した場合は `Nx=4L`。`t0` の既定値は常に16,000です。
+以前の `--nx` による `L` の変更は `--length` に移しています。
+4周期は同じ振幅・位相を持つ決定的な初期条件で、ランダムな摂動は加えていません。
+
+元の1周期 benchmark を実行する場合:
+
+```sh
+julia --project=. --threads=auto LBM/rayleigh_taylor.jl --nx=256 --output-dir=LBM/results/rti_fakhari
+```
+
+既定の結果は `LBM/results/rti_square/` に出力します。
 
 - `rti.pvd`: ParaView の時系列。時刻は `tstar=t/t0`。
 - `step_*.vtr`: phase field、密度、normalized / physical pressure、速度、total force、viscous correction。
@@ -43,7 +56,8 @@ ParaView では `Phase` の `0.5` contour で界面、`Velocity` の glyph / str
 完了済みの時刻を追加できます。単独の `step_0.vtr` は初期状態だけなので、
 時系列を見るときは **`rti.pvd` を開き、時間スライダーを進めてください**。
 コンソールにも bubble / spike の位置と初期状態からの変位を表示します。
-front は `x=0` の最高交点と `x=L/2` の最低交点を線形補間して測定します。
+front は代表する1周期の `x=0` の最高交点と `x=L/2=128` の最低交点を
+線形補間して測定します。正方形の領域中央 `x=Nx/2=512` は別の bubble の位置です。
 複数交点が生じた場合は交点数も保存します。
 
 ## モデルと時刻配置
@@ -127,7 +141,10 @@ RTI は MRT と `tau=tau_L+phi*(tau_H-tau_L)` の linear interpolation を既定
 初期界面は `yI=0.1L*cos(2pi*x/L)`、heavy fluid は上側です。
 phi は `0.5+0.5tanh(2d/xi)`、**初期化だけ `d≈y-yI(x)`** とします。
 これは Eq.(40) の厳密な signed perpendicular distance ではありません。
-格子は `x=0,...,L-1`, `y=-2L+0.5,...,2L-0.5`、上下壁は `y=±2L`。
+格子は `x=0,...,Nx-1`, `y=-2L+0.5,...,2L-0.5`、上下壁は `y=±2L`。
+`rti_parameters()` は `Nx=4L, Ny=4L` の正方形を返します。
+横幅を基準長さから独立にしたため、拡幅に伴って重力・粘性・表面張力・mobility を
+変えることはありません。`rti_parameters(Nx=256)` で元の `256×1024` に戻せます。
 physical pressure は各列で top wall をゼロとする hydrostatic 積分から初期化し、
 `pstar=p/(rho*cs2)` に変換します。
 
@@ -140,18 +157,35 @@ setup = rti_parameters()
 solver = initialize_rti(setup; collision=:mrt)
 step!(solver, 100)
 diagnostics(solver)
-interface_fronts(solver)
+interface_fronts(solver; wavelength=setup.wavelength)
 ```
 
 一般の初期値は `PhaseFieldLBM(phi, Parameters(...); u, pstar, collision=:mrt)`。
 `pstar` の既定値はゼロです。境界は RTI 用の水平 periodic / 上下 wall に固定されています。
 テストは equilibrium moments、stencil、MRT、BGK/MRT stress、四つの力、modified
 equilibria、half-force velocity、streaming、uniform state、RTI parameters、threading を
-検証します。標準格子の1,000ステップ回帰テストでは、bubble の上昇と heavy spike
+検証します。元の標準格子の1,000ステップ回帰テストでは、bubble の上昇と heavy spike
 の下降も確認します。論文 Fig.5 の定量再現は、baseline の長時間計算と界面位置の比較で
 別途評価する必要があります。
 
-## 長時間の動作検証
+## 正方形・4本の finger の動作検証
+
+`1024×1024`、`L=256`、波長256格子の4周期を16,000ステップ（`tstar=1`）まで
+実行しました。VTK から各 finger の `x=128,384,640,896` の先端を読み取り、
+全てが `y=-25.6038` から `y=-89.9283` へ下降したことを確認しました。
+代表する bubble は `25.6038→73.4804`。相質量 drift は `-1.69e-12`、
+最大 Mach 数は `0.01765`、NaN/Inf はありません。
+テストは計1,335件が通過しています。
+
+ParaView の結果は `LBM/results/rti_square_validation/rti.pvd`、
+`tstar=0,0.5,1` の比較画像は同ディレクトリの `four_fingers.png` です。
+この検証は16,000ステップまでで、既定の48,000ステップ計算は次のコマンドで実行します。
+
+```sh
+julia --project=. --threads=auto LBM/rayleigh_taylor.jl
+```
+
+## 元の1周期 benchmark の長時間検証
 
 標準 `256×1024`、MRT、linear tau interpolation、指定の Fig.5 パラメータで
 48,000ステップ（`tstar=3`）まで実行しました。phi=0.5 の測定結果は以下です。
@@ -173,5 +207,5 @@ VTK の実データから、spike の下降、bubble の上昇、逆向きの渦
 再実行するコマンド:
 
 ```sh
-julia --project=. --threads=16 LBM/rayleigh_taylor.jl --steps=48000 --output-every=4000 --diagnostic-every=1000 --output-dir=LBM/results/rti_debug_baseline
+julia --project=. --threads=16 LBM/rayleigh_taylor.jl --nx=256 --steps=48000 --output-every=4000 --diagnostic-every=1000 --output-dir=LBM/results/rti_debug_baseline
 ```
