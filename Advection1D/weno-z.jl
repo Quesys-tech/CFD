@@ -24,19 +24,19 @@ function u_exact(x)
 end
 
 function u_exact(x, t, c)
-    y = x - c * t 
-    z = ifelse(-1<=y<=1,y,mod(y+1,2)-1)
-    u_exact(z)
+    y = x - c * t
+    z = ifelse(-1 <= y <= 1, y, mod(y + 1, 2) - 1)
+    return u_exact(z)
 end
 
 function init(Δx::T) where {T}
-    x = -1:Δx:1-Δx
+    x = -1:Δx:(1 - Δx)
     u = zeros(T, length(x))
     u .= u_exact.(x)
-    x, u
+    return x, u
 end
 
-function wenoz!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ=1e-10) where {T}
+function wenoz!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ = 1.0e-10) where {T}
     N = length(u)
     @assert length(u⁺) == N
     @assert c > 0
@@ -46,7 +46,7 @@ function wenoz!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ=1e-10) w
     function D⁻(i)
         uᵢ = u[mod1(i, N)]
         uᵢ₋₁ = u[mod1(i - 1, N)]
-        (uᵢ - uᵢ₋₁) / Δx
+        return (uᵢ - uᵢ₋₁) / Δx
     end
 
     for i in eachindex(u)
@@ -71,6 +71,7 @@ function wenoz!(u⁺::Vector{T}, u::Vector{T}, c::T, Δx::T, Δt::T, ϵ=1e-10) w
         w₃ = α₃ / sum_α
         u⁺[i] = u[i] - Δt * c * (w₁ * b₁ + w₂ * b₂ + w₃ * b₃)
     end
+    return
 end
 
 function main()
@@ -84,10 +85,10 @@ function main()
     x, u = init(Δx)
     u⁺ = similar(u)
 
-    @gif for n = 0:400
-        plot(x, u, label="WENO")
+    return @gif for n in 0:400
+        plot(x, u, label = "WENO")
         t = n * Δt
-        plot!(x, u_exact.(x, t, c), label="Exact")
+        plot!(x, u_exact.(x, t, c), label = "Exact")
         wenoz!(u⁺, u, c, Δx, Δt)
         u .= u⁺
     end every 5

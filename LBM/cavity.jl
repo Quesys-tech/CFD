@@ -1,17 +1,19 @@
 using StaticArrays
 using WriteVTK
 using LinearAlgebra
-abstract type AbstractLattice{D,Q,T} end
-abstract type AbstractCollision{D,Q,T} end
+abstract type AbstractLattice{D, Q, T} end
+abstract type AbstractCollision{D, Q, T} end
 
-struct D2Q9Lattice{T} <: AbstractLattice{2,9,T}
-    w::SVector{9,T}
-    c::SMatrix{2,9,T,18}
+struct D2Q9Lattice{T} <: AbstractLattice{2, 9, T}
+    w::SVector{9, T}
+    c::SMatrix{2, 9, T, 18}
     function D2Q9Lattice(::Type{T}) where {T}
-        w = @SVector [4/9, 1/9, 1/9, 1/9, 1/9, 1/36, 1/36, 1/36, 1/36]
-        c = @SMatrix [0 1 0 -1 0 1 -1 -1 1;
-            0 0 1 0 -1 1 1 -1 -1]
-        new{T}(w, c)
+        w = @SVector [4 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 36, 1 / 36, 1 / 36, 1 / 36]
+        c = @SMatrix [
+            0 1 0 -1 0 1 -1 -1 1;
+            0 0 1 0 -1 1 1 -1 -1
+        ]
+        return new{T}(w, c)
     end
 end
 
@@ -27,26 +29,28 @@ Compute the equilibrium distribution function.
 - `rho`: Macroscopic density.
 """
 function f_eq(w_k, c_k, u, rho)
-    w_k * rho * (1 + 3c_k ⋅ u + 9 / 2 * (c_k ⋅ u)^2 - 3 / 2 * (u ⋅ u))
+    return w_k * rho * (1 + 3c_k ⋅ u + 9 / 2 * (c_k ⋅ u)^2 - 3 / 2 * (u ⋅ u))
 end
 
-struct D2Q9BGKCollision{T} <: AbstractCollision{2,9,T}
+struct D2Q9BGKCollision{T} <: AbstractCollision{2, 9, T}
     omega::T
     function D2Q9BGKCollision(omega::T) where {T}
-        new{T}(omega)
+        return new{T}(omega)
     end
 end
 
-struct D2Q9LBM{T,A2D<:AbstractArray{T,2},
-    A3D<:AbstractArray{T,3}}
+struct D2Q9LBM{
+        T, A2D <: AbstractArray{T, 2},
+        A3D <: AbstractArray{T, 3},
+    }
     lattice::D2Q9Lattice{T}
     collision::D2Q9BGKCollision{T}
-    f::A3D # M*N*9 
-    f_post::A3D# M*N*9 
-    rho_u::A3D# M*N*2
-    rho::A2D# M*N
+    f::A3D # M*N*9
+    f_post::A3D # M*N*9
+    rho_u::A3D # M*N*2
+    rho::A2D # M*N
     u::A3D # M*N*2
-    function D2Q9LBM(rho::A2D, u::A3D, collision::D2Q9BGKCollision{T}) where {T,A2D<:AbstractArray{T,2},A3D<:AbstractArray{T,3}}
+    function D2Q9LBM(rho::A2D, u::A3D, collision::D2Q9BGKCollision{T}) where {T, A2D <: AbstractArray{T, 2}, A3D <: AbstractArray{T, 3}}
         N_x, N_y = size(rho)
         @assert N_x == size(u, 2) && N_y == size(u, 3) "rho and u must have the same dimensions"
         lattice = D2Q9Lattice(T)
@@ -56,7 +60,7 @@ struct D2Q9LBM{T,A2D<:AbstractArray{T,2},
         end
         f_post = zeros(T, 9, N_x, N_y)
         rho_u = zeros(T, 9, N_x, N_y)
-        new{T,A2D,A3D}(lattice, collision, f, f_post, rho_u, rho, u)
+        return new{T, A2D, A3D}(lattice, collision, f, f_post, rho_u, rho, u)
     end
 end
 
@@ -72,6 +76,7 @@ function macroscopic!(lbm::D2Q9LBM{T}) where {T}
         end
         lbm.u[:, jx, jy] /= lbm.rho[jx, jy]
     end
+    return
 end
 
 function collide!(lbm::D2Q9LBM{T}) where {T}
@@ -83,6 +88,7 @@ function collide!(lbm::D2Q9LBM{T}) where {T}
             lbm.f_post[i, jx, jy] = lbm.f[i, jx, jy] - lbm.collision.omega * (lbm.f[i, jx, jy] - f_eq_k)
         end
     end
+    return
 end
 
 function stream!(lbm::D2Q9LBM{T}) where {T}
@@ -103,6 +109,7 @@ function stream!(lbm::D2Q9LBM{T}) where {T}
             lbm.f[i, jx, jy] = lbm.f_post[i, jx_pre, jy_pre]
         end
     end
+    return
 end
 
 function main()
@@ -110,7 +117,7 @@ function main()
     Re = 100.0
     Nx = 100
     Ny = Nx
-    nu = U_max*Nx / Re
+    nu = U_max * Nx / Re
     tau = Float32(3nu + 0.5)
     @show tau
     omega = 1.0 / tau
@@ -120,17 +127,17 @@ function main()
     lbm = D2Q9LBM(rho, u, collision)
     result_dir = joinpath(@__DIR__, "results/2dtaylor_green")
     mkpath(result_dir)
-    paraview_collection(joinpath(result_dir, "Nx$(Nx)_Ny$(Ny).pvd")) do pvd
+    return paraview_collection(joinpath(result_dir, "Nx$(Nx)_Ny$(Ny).pvd")) do pvd
         for t in 0:10000
             macroscopic!(lbm)
             if t % 100 == 0
                 vtk_dst = joinpath(result_dir, "step_$t.vtr")
                 @show vtk_dst
-                vtk_grid(vtk_dst, collect(0.5:1:(Nx-0.5)), collect(0.5:1:(Ny-0.5)), [0.0]) do vtk
+                vtk_grid(vtk_dst, collect(0.5:1:(Nx - 0.5)), collect(0.5:1:(Ny - 0.5)), [0.0]) do vtk
                     vtk["Density"] = lbm.rho
                     vtk["Velocity"] = (lbm.u[1, :, :], lbm.u[2, :, :], zeros(eltype(lbm.u), Nx, Ny))
-                    vtk["Mass"] = Nx*Ny*sum(lbm.rho)
-                    vtk["KineticEnergy"] = 0.5*sum(lbm.rho .* (lbm.u[1, :, :] .^ 2 + lbm.u[2, :, :] .^ 2))
+                    vtk["Mass"] = Nx * Ny * sum(lbm.rho)
+                    vtk["KineticEnergy"] = 0.5 * sum(lbm.rho .* (lbm.u[1, :, :] .^ 2 + lbm.u[2, :, :] .^ 2))
                     pvd[t] = vtk
                 end
             end

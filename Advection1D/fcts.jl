@@ -17,10 +17,10 @@ function u_exact(x, t, c)
 end
 
 function init(Δx::T) where {T}
-    x = 0:Δx:1-Δx
+    x = 0:Δx:(1 - Δx)
     u = zeros(T, length(x))
     u .= u_exact.(x, 0, 0)
-    x, u
+    return x, u
 end
 
 function ftcs_pbc!(u⁺::Vector{T}, u::Vector{T}, ν) where {T}
@@ -31,16 +31,17 @@ function ftcs_pbc!(u⁺::Vector{T}, u::Vector{T}, ν) where {T}
         uₗ::T = 0
         if i == 1
             uₗ = u[lastindex(u)]
-            uᵣ = u[i+1]
+            uᵣ = u[i + 1]
         elseif i == lastindex(u)
-            uₗ = u[i-1]
+            uₗ = u[i - 1]
             uᵣ = u[1]
         else
-            uₗ = u[i-1]
-            uᵣ = u[i+1]
+            uₗ = u[i - 1]
+            uᵣ = u[i + 1]
         end
         u⁺[i] = u[i] - 0.5ν * (uᵣ - uₗ)
     end
+    return
 end
 
 function main()
@@ -54,13 +55,13 @@ function main()
     x, u = init(Δx)
     u⁺ = similar(u)
 
-    @gif for n=0:200
-        plot(x,u,label="FCTS")
-        t = n*Δt
-        plot(x,u_exact.(x,t,c),label="Exact")
-        ftcs_pbc!(u⁺,u,ν)
-        u.= u⁺
+    return @gif for n in 0:200
+        plot(x, u, label = "FCTS")
+        t = n * Δt
+        plot(x, u_exact.(x, t, c), label = "Exact")
+        ftcs_pbc!(u⁺, u, ν)
+        u .= u⁺
     end
-end 
+end
 
 main()

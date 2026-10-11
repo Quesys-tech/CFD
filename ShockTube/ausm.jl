@@ -26,7 +26,7 @@ function setup_sod(x)
             Q[3, i] = p / (γ - 1) + ρ * u^2 / 2
         end
     end
-    Q
+    return Q
 end
 
 p(Q) = (γ - 1) * (Q[3] - Q[2]^2 / 2Q[1])
@@ -63,11 +63,11 @@ function sod_solver(x)
         maxu = maximum(𝐔[2, :] ./ 𝐔[1, :] .+ sqrt.(γ * p(𝐔) ./ 𝐔[1, :]))
         Δt = CFL * Δx / maxu
 
-        for i in 1:length(x)-1
-            𝐅[:, i] = flux_ausm!(𝐔[:, i], 𝐔[:, i+1])
+        for i in 1:(length(x) - 1)
+            𝐅[:, i] = flux_ausm!(𝐔[:, i], 𝐔[:, i + 1])
         end
-        for i in 2:length(x)-1
-            𝐔[:, i] .-= (Δt / Δx) .* (𝐅[:, i] .- 𝐅[:, i-1])
+        for i in 2:(length(x) - 1)
+            𝐔[:, i] .-= (Δt / Δx) .* (𝐅[:, i] .- 𝐅[:, i - 1])
         end
         t += Δt
     end
@@ -83,8 +83,8 @@ function main()
     ρ = 𝐔[1, :]
     u = 𝐔[2, :] ./ 𝐔[1, :]
 
-    df = DataFrame(x=x, density=ρ, velocity=u, pressure=[p(𝐔[:, i]) for i in eachindex(x)])
-    CSV.write("sod.csv", df)
+    df = DataFrame(x = x, density = ρ, velocity = u, pressure = [p(𝐔[:, i]) for i in eachindex(x)])
+    return CSV.write("sod.csv", df)
 end
 
 main()
