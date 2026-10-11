@@ -15,7 +15,7 @@ Compute the equilibrium distribution function.
 - `rho`: Macroscopic density.
 """
 function f_eq(w_k, c_k, u, rho)
-    rho * gamma_i(w_k, c_k, u)
+    return rho * gamma_i(w_k, c_k, u)
 end
 
 struct D2Q9BGKCollision{T} <: AbstractCollision{2, 9, T}
