@@ -439,7 +439,7 @@ function interface_fronts(
 end
 
 """
-Fig.5 physical parameters with a configurable horizontal domain width.
+Dimensionless RTI parameters (Fig.5 defaults), with configurable Re and width.
 L is the reference length AND perturbation wavelength; Ny=4L, dx=dy=1.
 Default Nx=4L gives a square with four identical initial fingers.
 Nx=L recovers the original single-wavelength benchmark.

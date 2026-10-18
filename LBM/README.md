@@ -50,6 +50,59 @@ julia --project=. --threads=auto LBM/rayleigh_taylor.jl --nx=256 --output-dir=LB
 - `diagnostics.csv`: phase mass と drift、phi の min/max、最大 Mach 数、有限性、最小 rho/tau、bubble / spike front と交点数。
 - `parameters.txt`: 使用した無次元値と導出した lattice parameters、境界・初期化・時刻配置。
 
+## 高Re・256×1024ケース（格子更新数を正方形ケースと一致）
+
+起動時に `--case=high_re_tall` を指定します。既存の正方形ケースは既定のままです。
+
+```sh
+julia --project=. --threads=16 LBM/rayleigh_taylor.jl --case=high_re_tall
+```
+
+| 設定 | 既定の正方形 | high_re_tall |
+|---|---:|---:|
+| Nx × Ny | 1024 × 1024 | 256 × 1024 |
+| Re | 3000 | 6000 |
+| ステップ数 | 48,000 | 192,000 |
+| 格子更新数 | 50,331,648,000 | 50,331,648,000 |
+| t0 / 終了tstar | 16,000 / 3 | 16,000 / 12 |
+| VTK出力間隔 | 1,000 | 4,000 |
+| 診断間隔 | 100 | 400 |
+| solver配列 Float64 | 392 MiB | 98 MiB |
+
+総格子更新数を一致させています。キャッシュ効率・スレッド同期・出力サイズが変わるため、
+実時間が同じになる保証はありません。基本の出力回数と診断回数も同じにしています。
+`tstar=0,1,2,3` の保存も維持し、最後は `tstar=12` を保存します。
+出力先は `LBM/results/rti_high_re_tall/`。実際の設定・終了時刻・格子更新数を
+`parameters.txt` に記録します。
+
+Reを2倍にするため、重力・基準速度・基準時間を保ち、動粘性とtauを半分にしました。
+`At=0.5, mu_star=1, Ca=0.26, Pe=1000, xi=5` は維持します。
+Ca固定に伴い表面張力も半分になります。導出値は
+`mu_H=mu_L=0.0028963093757400985`,
+`tau_H=0.002896309375740099`, `tau_L=0.008688928127220295`,
+`sigma=0.0002520615384615384`。mobilityとtau_phiは既定値と同じです。
+MRT、linear tau interpolation、Fs+Fb+Fp+Fmu、局所non-equilibrium stress、
+half-force速度補正、上下壁・水平周期境界には同じ実装を使います。
+
+初期界面は波長256格子の1周期です。正方形ケースの4本の初期fingerは横幅を縮めたことで
+1本になります。Reの増加により、その後の渦・界面の細分化が強くなる可能性はありますが、
+複数fingerの発生を保証するものではありません。192,000ステップの本番計算は実行して
+おらず、長時間の安定性・形態は未検証です。終了時刻tstar=12は従来の比較範囲tstar≤3を
+超え、後半は上下壁の影響を含みます。同じ1024格子の高さで無限領域の長時間RTIとは
+解釈できません。小さいtauでの非有限値・overshoot・Mach数は既存の診断で監視します。
+
+実格子256×1024・Re=6000の初期1,000ステップ（tstar=0.0625）だけを回帰テストとして
+実行し、bubble上昇・spike下降、相質量の相対drift<1e-10、有限値、正のrho/tau、
+最大Mach数<0.1を確認しました。CLIとVTKは16×64・2ステップで検証しています。
+既存テストを含め、solver 1,320件と設定・出力50件、計1,370件が通過しました。
+
+`--re=9000` などでReを変更でき、`--steps`・`--nx`・出力間隔などの明示指定は
+ケースの既定値より優先します。起動しない設定確認は次のコマンドです。
+
+```sh
+julia --project=. LBM/rayleigh_taylor.jl --help
+```
+
 ParaView では `Phase` の `0.5` contour で界面、`Velocity` の glyph / streamline
 で流れを確認できます。既定では `tstar=0,1,2,3` に必ず snapshot を保存します。
 各 snapshot で PVD を更新するため、計算途中でも `rti.pvd` の Reload Files で

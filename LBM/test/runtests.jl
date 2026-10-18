@@ -260,6 +260,22 @@ end
     @test -1.0e-3 < d.phi_min <= d.phi_max < 1.001
 end
 
+@testset "Re=6000 tall RTI startup with actual lattice parameters" begin
+    setup = rti_parameters(Nx = 256, Re = 6000)
+    s = initialize_rti(setup)
+    initial = interface_fronts(s)
+    # Startup regression only: t*=0.0625, not the 192000-step production run.
+    step!(s, 1000)
+    front, d = interface_fronts(s), diagnostics(s)
+    @test s.collision isa MRTCollision
+    @test front.bubble - initial.bubble > 0.1
+    @test front.spike - initial.spike < -0.1
+    @test d.finite && d.rho_min > 0 && d.tau_min > 0
+    @test abs(d.relative_mass_drift) < 1.0e-10
+    @test -1.0e-3 < d.phi_min <= d.phi_max < 1.001
+    @test 0 < d.max_mach < 0.1
+end
+
 @testset "Square RTI preserves vertical resolution and seeds four fingers" begin
     square, baseline = rti_parameters(), rti_parameters(Nx = 256)
     @test (square.Nx, square.Ny) == (1024, 1024)
